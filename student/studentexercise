@@ -1,0 +1,544 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+import os
+
+class StudentMarksApp:
+    #initializing the main window and setting the background color
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Student Marks Management System")
+        self.root.geometry("900x800")
+        self.root.configure(bg="#fed8a6")
+        #list to store student records
+        self.students = []
+        self.load_data()
+        self.create_widgets()
+    
+    def load_data(self):
+        """Load student data from file"""
+        file_path = "student/studentMarks.txt"
+        
+        # ensure file exists; if not create folder and file with zero students
+        if not os.path.exists(file_path):
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w') as f:
+                f.write("0\n")
+        
+        with open(file_path, 'r') as file:
+            try:
+                first_line = file.readline()
+                num_students = int(first_line.strip()) if first_line.strip() != "" else 0
+            except ValueError:
+                # If the first line isn't an int, assume 0 and reset to start
+                file.seek(0)
+                num_students = 0
+            
+            #read each student record 
+            for line in file:
+                parts = line.strip().split(',')
+                # skip malformed lines
+                if len(parts) < 6:
+                    continue
+                try:
+                    #dictionary for each student
+                    student = {
+                        'code': parts[0].strip(),
+                        'name': parts[1].strip(),
+                        'course1': int(parts[2].strip()),
+                        'course2': int(parts[3].strip()),
+                        'course3': int(parts[4].strip()),
+                        'exam': int(parts[5].strip())
+                    }
+                except ValueError:
+                    # skip lines where marks are not integers
+                    continue
+                self.students.append(student)
+    
+    def save_data(self):
+        """Save all student data back to the text file"""
+        file_path = "student/studentMarks.txt"
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w") as file:
+            file.write(str(len(self.students)) + "\n")
+            for s in self.students:
+                line = f"{s['code']},{s['name']},{s['course1']},{s['course2']},{s['course3']},{s['exam']}\n"
+                file.write(line)
+
+    def calculate_stats(self, student):
+        """Calculate student statistics"""
+        coursework_total = student['course1'] + student['course2'] + student['course3']
+        total_marks = coursework_total + student['exam']
+        percentage = (total_marks / 160) * 100
+        #grade based on percentage
+        if percentage >= 70:
+            grade = 'A'
+        elif percentage >= 60:
+            grade = 'B'
+        elif percentage >= 50:
+            grade = 'C'
+        elif percentage >= 40:
+            grade = 'D'
+        else:
+            grade = 'F'
+        
+        return {
+            'coursework_total': coursework_total,
+            'percentage': percentage,
+            'grade': grade
+        }
+    
+    def create_widgets(self):
+        """Create GUI widgets"""
+        # Title with gradient-like effect
+        title_frame = tk.Frame(self.root, bg="#9b7d61", height=80)
+        title_frame.pack(fill=tk.X)
+        title_frame.pack_propagate(False)
+        
+        title_label = tk.Label(title_frame, text="Student Marks Management System", 
+                              font=("Arial", 22, "bold"), bg="#9b7d61", fg="white")
+        title_label.pack(expand=True)
+        
+        # Options button with vibrant color
+        options_button = tk.Button(self.root, text=" Options", 
+                                   command=self.toggle_menu, width=20, 
+                                   font=("Arial", 12, "bold"),
+                                   bg="#daa38f", fg="white",
+                                   activebackground="#daa38f",
+                                   cursor="hand2", relief=tk.RAISED, bd=3)
+        options_button.pack(pady=15)
+        
+        # Menu frame 
+        self.menu_frame = tk.Frame(self.root, bg="#e8d1a7")
+        self.menu_visible = False
+        
+        # Create colorful buttons in a grid 
+        #all records
+        btn1 = tk.Button(self.menu_frame, text=" View All Records", 
+                 command=self.view_all_records, width=25, height=2,
+                 font=("Arial", 10, "bold"), bg="#a4533a", fg="white",
+                 activebackground="#a4533a", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn1.grid(row=0, column=0, padx=8, pady=8)
+        #individual score
+        btn2 = tk.Button(self.menu_frame, text=" View Individual Record", 
+                 command=self.view_individual_record, width=25, height=2,
+                 font=("Arial", 10, "bold"), bg="#854937", fg="white",
+                 activebackground="#854937", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn2.grid(row=0, column=1, padx=8, pady=8)
+        #Highest score
+        btn3 = tk.Button(self.menu_frame, text=" Highest Score ", 
+                 command=self.show_highest_score, width=25, height=2,
+                 font=("Arial", 10, "bold"), bg="#dfa3a4", fg="white",
+                 activebackground="#dfa3a4", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn3.grid(row=1, column=0, padx=8, pady=8)
+        #lowest score
+        btn4 = tk.Button(self.menu_frame, text=" Lowest Score ", 
+                 command=self.show_lowest_score, width=25, height=2,
+                 font=("Arial", 10, "bold"), bg="#84592b", fg="white",
+                 activebackground="#84592b", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn4.grid(row=1, column=1, padx=8, pady=8)
+        
+        #  extension buttons 
+        # Sort Records
+        btn5 = tk.Button(self.menu_frame, text=" Sort Records ",
+                         command=self.sort_records, width=25, height=2,
+                         font=("Arial", 10, "bold"), bg="#a67b5b", fg="white",
+                         activebackground="#a67b5b", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn5.grid(row=2, column=0, padx=8, pady=8)
+
+        # Add Student
+        btn6 = tk.Button(self.menu_frame, text=" Add Student ",
+                         command=self.add_student, width=25, height=2,
+                         font=("Arial", 10, "bold"), bg="#8c5e3c", fg="white",
+                         activebackground="#8c5e3c", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn6.grid(row=2, column=1, padx=8, pady=8)
+
+        # Delete Student
+        btn7 = tk.Button(self.menu_frame, text=" Delete Student ",
+                         command=self.delete_student, width=25, height=2,
+                         font=("Arial", 10, "bold"), bg="#66391c", fg="white",
+                         activebackground="#66391c", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn7.grid(row=3, column=0, padx=8, pady=8)
+
+        # Update Student
+        btn8 = tk.Button(self.menu_frame, text=" Update Student ",
+                         command=self.update_student, width=25, height=2,
+                         font=("Arial", 10, "bold"), bg="#7b4e2e", fg="white",
+                         activebackground="#7b4e2e", cursor="hand2", relief=tk.RAISED, bd=2)
+        btn8.grid(row=3, column=1, padx=8, pady=8)
+        #  end of extension buttons
+
+        # Output display with styled frame
+        output_frame = tk.Frame(self.root, bg="#9d9167")
+        output_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        output_label = tk.Label(output_frame, text=" Results Display", 
+                               font=("Arial", 12, "bold"), bg="#9d9167", fg="#743014")
+        output_label.pack(anchor=tk.W, pady=(0, 5))
+        
+        self.output_text = scrolledtext.ScrolledText(output_frame, wrap=tk.WORD, 
+                                                     font=("Consolas", 10), height=18,
+                                                     bg="#ffffff", fg="#2c3e50",
+                                                     relief=tk.SOLID, bd=1)
+        self.output_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Configure text tags for colored grades
+        self.output_text.tag_config("grade_A", foreground="#27ae60", font=("Consolas", 10, "bold"))
+        self.output_text.tag_config("grade_B", foreground="#3498db", font=("Consolas", 10, "bold"))
+        self.output_text.tag_config("grade_C", foreground="#f39c12", font=("Consolas", 10, "bold"))
+        self.output_text.tag_config("grade_D", foreground="#e67e22", font=("Consolas", 10, "bold"))
+        self.output_text.tag_config("grade_F", foreground="#e74c3c", font=("Consolas", 10, "bold"))
+        self.output_text.tag_config("header", foreground="#2c3e50", font=("Consolas", 11, "bold"))
+        self.output_text.tag_config("summary", foreground="#8e44ad", font=("Consolas", 10, "bold"))
+    
+    def toggle_menu(self):
+        """Show or hide the menu buttons"""
+        if self.menu_visible:
+            self.menu_frame.pack_forget()
+            self.menu_visible = False
+        else:
+            self.menu_frame.pack(pady=10)
+            self.menu_visible = True
+    
+    def format_student_output(self, student, stats):
+        """Format student information for display with colors"""
+        output = f"\n{'=' * 60}\n"
+        output += f"Student Name: {student['name']}\n"
+        output += f"Student Number: {student['code']}\n"
+        output += f"Total Coursework Mark: {stats['coursework_total']}/60\n"
+        output += f"Exam Mark: {student['exam']}/100\n"
+        output += f"Overall Percentage: {stats['percentage']:.2f}%\n"
+        output += f"Student Grade: "
+        
+        # Insert the grade with color
+        self.output_text.insert(tk.END, output)
+        # ensure tag exists (A-F)
+        grade_tag = f"grade_{stats['grade']}" if f"grade_{stats['grade']}" in self.output_text.tag_names() else "grade_F"
+        self.output_text.insert(tk.END, stats['grade'], grade_tag)
+        self.output_text.insert(tk.END, f"\n{'=' * 60}\n")
+    
+    def view_all_records(self):
+        """Display all student records"""
+        self.output_text.delete(1.0, tk.END)
+        self.output_text.insert(tk.END, "ALL STUDENT RECORDS\n", "header")
+        
+        total_percentage = 0
+        
+        for student in self.students:
+            stats = self.calculate_stats(student)
+            self.format_student_output(student, stats)
+            total_percentage += stats['percentage']
+        #summary section
+        avg_percentage = total_percentage / len(self.students) if len(self.students) > 0 else 0.0
+        self.output_text.insert(tk.END, f"\n{'*' * 60}\n", "summary")
+        self.output_text.insert(tk.END, f"SUMMARY\n", "summary")
+        self.output_text.insert(tk.END, f"Number of students in class: {len(self.students)}\n", "summary")
+        self.output_text.insert(tk.END, f"Average percentage mark: {avg_percentage:.2f}%\n", "summary")
+        self.output_text.insert(tk.END, f"{'*' * 60}\n", "summary")
+    
+    def view_individual_record(self):
+        """Display individual student record"""
+        select_window = tk.Toplevel(self.root)
+        select_window.title("Select Student")
+        select_window.geometry("450x450")
+        select_window.configure(bg="#f0f4f8")
+        
+        # Header
+        header_frame = tk.Frame(select_window, bg="#9c9874", height=60)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        tk.Label(header_frame, text="Select a Student:", 
+                font=("Arial", 14, "bold"), bg="#9c9874", fg="white").pack(expand=True)
+        
+        # Listbox with styling
+        listbox_frame = tk.Frame(select_window, bg="#f0f4f8")
+        listbox_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        
+        scrollbar = tk.Scrollbar(listbox_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        listbox = tk.Listbox(listbox_frame, font=("Arial", 11), height=15,
+                            bg="white", fg="#2c3e50", selectbackground="#d9c89c",
+                            yscrollcommand=scrollbar.set)
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=listbox.yview)
+        
+        for student in self.students:
+            listbox.insert(tk.END, f"{student['code']} - {student['name']}")
+        
+        def show_selected():
+            selection = listbox.curselection()
+            if selection:
+                index = selection[0]
+                student = self.students[index]
+                stats = self.calculate_stats(student)
+                
+                self.output_text.delete(1.0, tk.END)
+                self.output_text.insert(tk.END, "INDIVIDUAL STUDENT RECORD\n", "header")
+                self.format_student_output(student, stats)
+                
+                select_window.destroy()
+        
+        tk.Button(select_window, text="Show Record", 
+                 command=show_selected, width=20, height=2,
+                 font=("Arial", 11, "bold"), bg="#441d1c", fg="white",
+                 activebackground="#441d1c", cursor="hand2").pack(pady=10)
+    
+    def show_highest_score(self):
+        """Display student with highest total score"""
+        if not self.students:
+            messagebox.showinfo("Info", "No student records available.")
+            return
+
+        highest_student = max(self.students, 
+                             key=lambda s: self.calculate_stats(s)['percentage'])
+        
+        stats = self.calculate_stats(highest_student)
+        self.output_text.delete(1.0, tk.END)
+        self.output_text.insert(tk.END, "STUDENT WITH HIGHEST TOTAL SCORE \n", "header")
+        self.format_student_output(highest_student, stats)
+    
+    def show_lowest_score(self):
+        """Display student with lowest total score"""
+        if not self.students:
+            messagebox.showinfo("Info", "No student records available.")
+            return
+
+        lowest_student = min(self.students, 
+                            key=lambda s: self.calculate_stats(s)['percentage'])
+        
+        stats = self.calculate_stats(lowest_student)
+        self.output_text.delete(1.0, tk.END)
+        self.output_text.insert(tk.END, " STUDENT WITH LOWEST TOTAL SCORE\n", "header")
+        self.format_student_output(lowest_student, stats)
+
+    #  Extension methods 
+
+    def sort_records(self):
+        """Sort student records by name, code, or percentage"""
+        sort_win = tk.Toplevel(self.root)
+        sort_win.title("Sort Records")
+        sort_win.geometry("320x240")
+        sort_win.configure(bg="#f5e7c5")
+
+        tk.Label(sort_win, text="Sort students by:", bg="#f5e7c5",
+                 font=("Arial", 12, "bold")).pack(pady=10)
+# Variables to store user's sort choices
+        sort_by = tk.StringVar()
+        sort_order = tk.StringVar(value="asc")
+
+        combo = ttk.Combobox(sort_win, textvariable=sort_by,
+                     values=["Name", "Student Code" ],
+                     state="readonly")
+        combo.pack(pady=10)
+        combo.current(0)
+# Radio buttons for sort order selection
+        ttk.Radiobutton(sort_win, text="Ascending", value="asc",
+                        variable=sort_order).pack()
+        ttk.Radiobutton(sort_win, text="Descending", value="desc",
+                        variable=sort_order).pack()
+
+        def apply_sort():
+            if sort_by.get() == "":
+                messagebox.showwarning("Warning", "Please choose a field to sort by.")
+                return
+            reverse = (sort_order.get() == "desc")
+
+            if sort_by.get() == "Name":
+                self.students.sort(key=lambda s: s['name'].lower(), reverse=reverse)
+            elif sort_by.get() == "Student Code":
+                # Ensure numeric compare if codes are numeric strings
+                try:
+                    self.students.sort(key=lambda s: int(s['code']), reverse=reverse)
+                except ValueError:
+                    self.students.sort(key=lambda s: s['code'], reverse=reverse)
+            elif sort_by.get() == "Percentage":
+                self.students.sort(key=lambda s: self.calculate_stats(s)['percentage'], reverse=reverse)
+
+            sort_win.destroy()
+            self.view_all_records()
+
+        tk.Button(sort_win, text="Sort", bg="#8e6f49", fg="white",
+                  command=apply_sort).pack(pady=12)
+#  popup window for adding student
+    def add_student(self):
+        """Add a new student record and save to file"""
+        win = tk.Toplevel(self.root)
+        win.title("Add Student")
+        win.geometry("360x460")
+        win.configure(bg="#f6ecd4")
+# List of field labels for the form
+        fields = ["Student Code", "Name", "Course Mark 1", "Course Mark 2", "Course Mark 3", "Exam Mark"]
+        entries = {}
+
+        for f in fields:
+            tk.Label(win, text=f, bg="#f6ecd4", font=("Arial", 11)).pack(pady=5)
+            entry = tk.Entry(win)
+            entry.pack()
+            entries[f] = entry
+
+        def submit():
+            # basic validation
+            code = entries["Student Code"].get().strip()
+            name = entries["Name"].get().strip()
+            if not code or not name:
+                messagebox.showerror("Error", "Student code and name are required.")
+                return
+            try:
+                c1 = int(entries["Course Mark 1"].get())
+                c2 = int(entries["Course Mark 2"].get())
+                c3 = int(entries["Course Mark 3"].get())
+                exam = int(entries["Exam Mark"].get())
+            except ValueError:
+                messagebox.showerror("Error", "Marks must be integer values.")
+                return
+
+            # Validate ranges
+            if not (1000 <= int(code) <= 9999) if code.isdigit() else False:
+                # if code is numeric, check range; else allow (but warn)
+                messagebox.showwarning("Warning", "Student code should be between 1000 and 9999.")
+                # continue after warning
+
+            for s in self.students:
+                if s['code'] == code:
+                    messagebox.showerror("Error", "A student with that code already exists.")
+                    return
+# Create new student dictionary
+            new_student = {
+                'code': code,
+                'name': name,
+                'course1': c1,
+                'course2': c2,
+                'course3': c3,
+                'exam': exam
+            }
+            self.students.append(new_student)
+            self.save_data()
+            win.destroy()
+            messagebox.showinfo("Success", "Student added successfully.")
+            self.view_all_records()
+
+        tk.Button(win, text="Add Student", bg="#78502f", fg="white",
+                  command=submit).pack(pady=15)
+# popup window for deletion
+    def delete_student(self):
+        """Delete a student record and save to file"""
+        if not self.students:
+            messagebox.showinfo("Info", "No students to delete.")
+            return
+
+        win = tk.Toplevel(self.root)
+        win.title("Delete Student")
+        win.geometry("420x420")
+        win.configure(bg="#f0ead2")
+
+        tk.Label(win, text="Select student to delete:", 
+                 font=("Arial", 12, "bold"), bg="#f0ead2").pack(pady=10)
+# Listbox to display all students
+        listbox = tk.Listbox(win, font=("Arial", 11))
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10)
+# Populate listbox with student information
+        for s in self.students:
+            listbox.insert(tk.END, f"{s['code']} - {s['name']}")
+
+        def delete_selected():
+            idx = listbox.curselection()
+            if not idx:
+                messagebox.showwarning("Warning", "Please select a student to delete.")
+                return
+            confirmation = messagebox.askyesno("Confirm", "Are you sure you want to delete the selected student?")
+            if not confirmation:
+                return
+            del self.students[idx[0]]
+            self.save_data()
+            win.destroy()
+            messagebox.showinfo("Deleted", "Student deleted successfully.")
+            self.view_all_records()
+
+        tk.Button(win, text="Delete", bg="#6e3c2c", fg="white",
+                  command=delete_selected).pack(pady=10)
+
+    def update_student(self):
+        """Update an existing student record and save to file"""
+        if not self.students:
+            messagebox.showinfo("Info", "No students to update.")
+            return
+# selection window
+        win = tk.Toplevel(self.root)
+        win.title("Update Student")
+        win.geometry("480x480")
+        win.configure(bg="#efe3c2")
+
+        tk.Label(win, text="Select a student:", font=("Arial", 12, "bold"),
+                 bg="#efe3c2").pack(pady=10)
+ # Listbox to display all students
+        listbox = tk.Listbox(win, font=("Arial", 11))
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10)
+
+        for s in self.students:
+            listbox.insert(tk.END, f"{s['code']} - {s['name']}")
+
+        def edit():
+            idxs = listbox.curselection()
+            if not idxs:
+                messagebox.showwarning("Warning", "Please select a student to edit.")
+                return
+             # Get selected item indices
+            idx = idxs[0]
+            student = self.students[idx]
+# edit window
+            edit_win = tk.Toplevel(win)
+            edit_win.title("Edit Student")
+            edit_win.geometry("360x380")
+            edit_win.configure(bg="#f7efd4")
+
+            fields = {
+                "Name": student['name'],
+                "Course Mark 1": student['course1'],
+                "Course Mark 2": student['course2'],
+                "Course Mark 3": student['course3'],
+                "Exam Mark": student['exam']
+            }
+
+            entries = {}
+# Create label and pre-filled entry for each field
+            for f, v in fields.items():
+                tk.Label(edit_win, text=f, bg="#f7efd4").pack(pady=5)
+                e = tk.Entry(edit_win)
+                e.insert(0, v)
+                e.pack()
+                entries[f] = e
+
+            def save_changes():
+                try:
+                    # Update student dictionary with new values
+                    student['name'] = entries["Name"].get().strip()
+                    student['course1'] = int(entries["Course Mark 1"].get())
+                    student['course2'] = int(entries["Course Mark 2"].get())
+                    student['course3'] = int(entries["Course Mark 3"].get())
+                    student['exam'] = int(entries["Exam Mark"].get())
+                except ValueError:
+                    #  non-integer input for marks
+                    messagebox.showerror("Error", "Marks must be integer values.")
+                    return
+
+                self.save_data()
+                edit_win.destroy()
+                win.destroy()
+                messagebox.showinfo("Updated", "Student updated successfully.")
+                self.view_all_records()
+#button to save changes
+            tk.Button(edit_win, text="Save Changes", bg="#7b4a2e", fg="white",
+                      command=save_changes).pack(pady=15)
+#button to edit from selected student
+        tk.Button(win, text="Edit Student", bg="#5d3b2c", fg="white",
+                  command=edit).pack(pady=10)
+
+
+def main():
+    root = tk.Tk()
+    app = StudentMarksApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
